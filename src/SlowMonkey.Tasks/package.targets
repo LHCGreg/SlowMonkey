@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Target Name="BuildNugetPackage" DependsOnTargets="Build">
+    <ItemGroup>
+      <DllsToIncludeInPackage Include="$(OutputPath)*.dll" />
+    </ItemGroup>
+
+    <Message Text="Copying output to package staging area." />
+    <Copy SourceFiles="@(DllsToIncludeInPackage);SlowMonkey.targets;../../license.txt;../../notice.txt" DestinationFolder="package/build" />
+    
+    <Message Text="Building NuGet package." />
+    <Exec WorkingDirectory="$(MSBuildProjectDirectory)" Command="$(NuGetCommand) pack SlowMonkey.nuspec -OutputDirectory $(OutputPath) -BasePath package -NonInteractive" />
+  </Target>
+
+  <Target Name="CleanPackage">
+    <ItemGroup>
+      <Packages Include="$(OutputPath)*.nupkg" />
+      <PackageStagingFiles Include="package/build/*" />
+    </ItemGroup>
+    
+    <Delete Files="@(Packages)" />
+    <Delete Files="@(PackageStagingFiles)" />
+  </Target>
+
+  <PropertyGroup>
+    <CleanDependsOn>
+      $(CleanDependsOn);
+      CleanPackage
+    </CleanDependsOn>
+  </PropertyGroup>
+</Project>

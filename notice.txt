@@ -1,0 +1,8 @@
+SlowMonkey
+Copyright 2014 Greg Najda, licensed under the Apache License 2.0 (license.txt)
+
+SlowMonkey is inspired by Sayed Hashimi's SlowCheetah package but is not a fork of it nor uses any code from it.
+
+SlowMonkey uses the following libraries:
+
+Mono.Web.Xdt (https://github.com/mrward/xdt) is a fork of Microsoft.Web.Xdt (https://xdt.codeplex.com/). Both are licensed under the Apache license 2.0.

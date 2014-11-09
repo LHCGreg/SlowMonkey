@@ -1,0 +1,6 @@
+bin/
+obj/
+*.user
+*.suo
+src/packages/*/
+src/SlowMonkey.Tasks/package/build/*

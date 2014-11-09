@@ -1,0 +1,70 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!-- Import after Microsoft.CSharp.Targets -->
+  
+  <UsingTask TaskName="SlowMonkey.Tasks.TransformXml" AssemblyFile="$(MSBuildThisFileDirectory)SlowMonkey.Tasks.dll" />
+
+  <Target Name="TransformAppConfig" BeforeTargets="_CopyAppConfigFile"
+  Condition="'@(AppConfigWithTargetPath)' != '' and Exists('@(AppConfigWithTargetPath->'%(Filename).$(Configuration)%(Extension)')')"
+  Inputs="@(AppConfigWithTargetPath);@(AppConfigWithTargetPath->'%(Filename).$(Configuration)%(Extension)')"
+  Outputs="$(IntermediateOutputPath)$(MSBuildProjectFile).app.$(Configuration).transformed.config"
+  >
+    <!-- Copy to obj folder -->
+    <Copy SourceFiles="@(AppConfigWithTargetPath)" DestinationFiles="$(IntermediateOutputPath)$(MSBuildProjectFile).app.$(Configuration).config" />
+    
+    <!-- Transform -->
+    <SlowMonkey.Tasks.TransformXml
+      Source="$(IntermediateOutputPath)$(MSBuildProjectFile).app.$(Configuration).config"
+      Destination="$(IntermediateOutputPath)$(MSBuildProjectFile).app.$(Configuration).transformed.config"
+      Transform="@(AppConfigWithTargetPath->'%(Filename).$(Configuration)%(Extension)')" />
+    
+    <!-- Set transformed to $(AppConfig) and @(AppConfigWithTargetPath) -->
+    
+    <!-- Use CreateProperty instead of a PropertyGroup because mono 2.10.8.1 does not support PropertyGroups inside targets. -->
+    <CreateProperty Value="$(IntermediateOutputPath)$(MSBuildProjectFile).app.$(Configuration).transformed.config">
+      <Output TaskParameter="Value" PropertyName="AppConfig" />
+    </CreateProperty>
+    
+    <!-- Use CreateProperty instead of putting it in the propertygroup above because dynamic
+    properties seem to be lazily evaluated in xbuild instead of evaluated once at the time of their definition.
+    That results in the property value being empty later on after the original AppConfigWithTargetPath is removed.
+    
+    See mono bug https://bugzilla.xamarin.com/show_bug.cgi?id=24366
+    
+    Using CreateProperty does not suffe from this problem.
+    
+    -->
+    <CreateProperty Value="@(AppConfigWithTargetPath->'%(TargetPath)')">
+      <Output TaskParameter="Value" PropertyName="OldAppConfigTargetPath" />
+    </CreateProperty>
+    
+    <ItemGroup>
+      <AppConfigWithTargetPath Remove="@(AppConfigWithTargetPath)" />
+    </ItemGroup>
+    
+    <!-- Use CreateItem instead of simply putting an include in the ItemGroup because
+    
+      <AppConfigWithTargetPath Include="$(AppConfig)">
+        <TargetPath>$(OldAppConfigTargetPath)</TargetPath>
+      </AppConfigWithTargetPath>
+      
+      results in literally "$(OldAppConfigTargetPath)" being the value of the TargetPath metadata.
+      
+      See mono bug https://bugzilla.xamarin.com/show_bug.cgi?id=24211
+      
+    -->
+    <CreateItem Include="$(AppConfig)" AdditionalMetadata="TargetPath=$(OldAppConfigTargetPath)">
+      <Output TaskParameter="Include" ItemName="AppConfigWithTargetPath" />
+    </CreateItem>
+  </Target>
+  
+  <Target Name="SlowMonkeyClean">
+    <Delete Files="$(IntermediateOutputPath)$(MSBuildProjectFile).app.$(Configuration).config;$(IntermediateOutputPath)$(MSBuildProjectFile).app.$(Configuration).transformed.config" />
+  </Target>
+  
+  <PropertyGroup>
+    <CleanDependsOn>
+      $(CleanDependsOn);
+      SlowMonkeyClean
+    </CleanDependsOn>
+  </PropertyGroup>
+</Project>
