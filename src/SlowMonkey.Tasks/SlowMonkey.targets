@@ -3,24 +3,67 @@
   
   <UsingTask TaskName="SlowMonkey.Tasks.TransformXml" AssemblyFile="$(MSBuildThisFileDirectory)SlowMonkey.Tasks.dll" />
 
-  <Target Name="TransformAppConfig" BeforeTargets="_CopyAppConfigFile"
-  Condition="'@(AppConfigWithTargetPath)' != '' and Exists('@(AppConfigWithTargetPath->'%(Filename).$(Configuration)%(Extension)')')"
-  Inputs="@(AppConfigWithTargetPath);@(AppConfigWithTargetPath->'%(Filename).$(Configuration)%(Extension)')"
-  Outputs="$(IntermediateOutputPath)$(MSBuildProjectFile).app.$(Configuration).transformed.config"
+  <Target Name="_SlowMonkeySetTransformFile" BeforeTargets="_CopyAppConfigFile">
+    <!-- If ConfigTransformFile specified, error if it does not exist. -->
+    <Error Condition="$(ConfigTransformFile) != '' and !Exists('$(ConfigTransformFile)')"
+           Text="ConfigTransformFile does not exist: $(ConfigTransformFile)" />
+    
+    <CreateProperty Condition="'$(ConfigTransformFile)' == ''" Value="@(AppConfigWithTargetPath->'%(Filename).$(Configuration)%(Extension)')">
+      <Output TaskParameter="Value" PropertyName="ConfigTransformFile" />
+    </CreateProperty>
+    
+    <!-- Make it an item so we can get the file name instead of using $(ConfigTransformFile)
+         in the name of the transformed file, because that might contain directory separators -->
+    <CreateItem Condition="'$(ConfigTransformFile)' != ''" Include="$(ConfigTransformFile)">
+      <Output TaskParameter="Include" ItemName="ConfigTransformFileItem" />
+    </CreateItem>
+    
+    <CreateProperty Condition="'$(ConfigTransformFile)' != ''" Value="@(ConfigTransformFileItem->'%(Filename)%(Extension)')">
+      <Output TaskParameter="Value" PropertyName="ConfigTransformFilename" />
+    </CreateProperty>
+  
+    <CreateProperty Condition="'$(ConfigTransformFile)' != ''" Value="$(IntermediateOutputPath)$(MSBuildProjectFile).$(ConfigTransformFilename).transformed">
+      <Output TaskParameter="Value" PropertyName="ConfigTransformOutput" />
+    </CreateProperty>
+  </Target>
+
+  <Target Name="_TransformAppConfig"
+          AfterTargets="_SlowMonkeySetTransformFile"
+          Condition="'@(AppConfigWithTargetPath)' != '' and Exists('$(ConfigTransformFile)')"
+          Inputs="@(AppConfigWithTargetPath);$(ConfigTransformFile)"
+          Outputs="$(ConfigTransformOutput)"
   >
     <!-- Copy to obj folder -->
-    <Copy SourceFiles="@(AppConfigWithTargetPath)" DestinationFiles="$(IntermediateOutputPath)$(MSBuildProjectFile).app.$(Configuration).config" />
+    <Copy SourceFiles="@(AppConfigWithTargetPath)" DestinationFiles="$(ConfigTransformOutput)" />
     
     <!-- Transform -->
     <SlowMonkey.Tasks.TransformXml
-      Source="$(IntermediateOutputPath)$(MSBuildProjectFile).app.$(Configuration).config"
-      Destination="$(IntermediateOutputPath)$(MSBuildProjectFile).app.$(Configuration).transformed.config"
-      Transform="@(AppConfigWithTargetPath->'%(Filename).$(Configuration)%(Extension)')" />
-    
+      Source="$(ConfigTransformOutput)"
+      Destination="$(ConfigTransformOutput)"
+      Transform="$(ConfigTransformFile)" />
+  </Target>
+
+  <Target Name="_TouchTransformedConfig"
+          AfterTargets="_TransformAppConfig"
+          Condition="'@(AppConfigWithTargetPath)' != '' and Exists('$(ConfigTransformFile)')"
+  >
+    <!-- Set the modified timestamp of the transformed config to now, so that _CopyAppConfigFile actually copies the file.
+         Otherwise what can happen is you build in configuration A, then in Configuration B, then in Configuration A again.
+         _CopyAppConfigFile will see that the timestamp of the Configuration A transformed config is older than the app.config
+         in the bin folder and so won't copy it to bin.
+         
+         This lets us skip running the transform if possible while still forcing the transformed config to always be copied to bin.
+         -->
+    <Touch AlwaysCreate="false" Files="$(ConfigTransformOutput)" />
+  </Target>
+  
+  <Target Name="_SetAppConfigToTransformed"
+          AfterTargets="_TouchTransformedConfig"
+          Condition="'@(AppConfigWithTargetPath)' != '' and Exists('$(ConfigTransformFile)')">
     <!-- Set transformed to $(AppConfig) and @(AppConfigWithTargetPath) -->
     
     <!-- Use CreateProperty instead of a PropertyGroup because mono 2.10.8.1 does not support PropertyGroups inside targets. -->
-    <CreateProperty Value="$(IntermediateOutputPath)$(MSBuildProjectFile).app.$(Configuration).transformed.config">
+    <CreateProperty Value="$(ConfigTransformOutput)">
       <Output TaskParameter="Value" PropertyName="AppConfig" />
     </CreateProperty>
     
@@ -58,7 +101,11 @@
   </Target>
   
   <Target Name="SlowMonkeyClean">
-    <Delete Files="$(IntermediateOutputPath)$(MSBuildProjectFile).app.$(Configuration).config;$(IntermediateOutputPath)$(MSBuildProjectFile).app.$(Configuration).transformed.config" />
+    <CreateItem Include="$(IntermediateOutputPath)*.transformed">
+      <Output TaskParameter="Include" ItemName="SlowMonkeyFilesToClean" />
+    </CreateItem>
+    
+    <Delete Files="@(SlowMonkeyFilesToClean)" />
   </Target>
   
   <PropertyGroup>

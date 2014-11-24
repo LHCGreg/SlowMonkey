@@ -30,6 +30,16 @@ with
 
 in your .csproj after the package installs.
 
+## Using a transform other than app.$(Configuration).config
+
+Starting in SlowMonkey 1.1, you can specify a transform file manually when doing command line builds with
+
+```
+msbuild /p:Configuration=Release;ConfigTransformFile=app.QA.config
+```
+
+It is common to have many build configurations that are identical other than the configuration transforms used. For example, one may have a project with QA, RC, and production configurations which use the same build settings but have different config transforms. These extra configurations bleed into other projects in the solution. This feature allows you to have just a single Release configuation and use a command line switch to choose which config transform to use.
+
 ## Rationale
 
 SlowCheetah works great with .NET but makes some assumptions that are not true on Linux (such as the existence of a LocalAppData environment variable and the use of backslashes in paths), uses MSBuild features that are not available in Mono (such as ItemDefinitionGroups - https://bugzilla.xamarin.com/show_bug.cgi?id=10017), uses MSBuild features that are buggy in Mono (https://bugzilla.xamarin.com/show_bug.cgi?id=24211, https://bugzilla.xamarin.com/show_bug.cgi?id=24366), and uses the stock Microsoft.Web.XmlTransform.dll, which is affected by Mono bugs https://bugzilla.xamarin.com/show_bug.cgi?id=19426 and https://bugzilla.xamarin.com/show_bug.cgi?id=19447. SlowCheetah has a lot of extra features like support for ClickOnce projects and uses a lot of advanced MSBuild features. Rather than forking SlowCheetah and attempting to port all those features to Mono, SlowMonkey keeps it simple with just plain old executable and class library support. No Visual Studio addin or manually adding TransformOnBuild metadata to the .csproj is required with SlowMonkey, just install the NuGet package and build.
