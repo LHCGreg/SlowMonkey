@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Xml;
 using Microsoft.Build.Framework;
 using Microsoft.Build.Utilities;
 using Microsoft.Web.XmlTransform;
@@ -27,7 +28,18 @@ namespace SlowMonkey.Tasks
                 using (XmlTransformableDocument sourceFile = new XmlTransformableDocument())
                 {
                     sourceFile.PreserveWhitespace = true;
-                    sourceFile.Load(Source);
+
+                    using (XmlTextReader sourceReader = new XmlTextReader(Source))
+                    {
+                        // Don't call use sourceFile.Load(Source) because that triggers a mono bug where
+                        // the (private) property sourceFile.TextEncoding is always set to Unicode.
+                        // This is a result of mono bug https://bugzilla.xamarin.com/show_bug.cgi?id=25401
+                        // Constructing our own XmlTextReader, passing in the file name instead of a TextReader,
+                        // works around this bug. Otherwise transformed config files will be encoded in UTF-16 instead of
+                        // UTF-8 if the source file is UTF-8 but does not have a UTF-8 BOM.
+                        //sourceFile.Load(Source);
+                        sourceFile.Load(sourceReader);
+                    }
 
                     step = "loading transform " + Transform;
 

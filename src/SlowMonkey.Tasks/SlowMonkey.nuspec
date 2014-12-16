@@ -2,13 +2,13 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
   <metadata>
     <id>SlowMonkey</id>
-    <version>1.1.0</version>
+    <version>1.1.1</version>
     <authors>Greg Najda</authors>
     <projectUrl>https://github.com/LHCGreg/SlowMonkey</projectUrl>
     <licenseUrl>http://www.apache.org/licenses/LICENSE-2.0.html</licenseUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <tags>config transform transformation slowcheetah</tags>
-    <releaseNotes>Added ability to specify a transform file other than the one implied by the build configuration with /p:ConfigTransformFile=MyTransform.config.</releaseNotes>
+    <releaseNotes>Work around mono bug causing transformed config to be UTF-16 if source file is UTF-8 without UTF-8 BOM.</releaseNotes>
     <summary>app.config transformations for .NET and Mono non-web projects.</summary>
     <description>SlowMonkey allows you to use the same kind of config transformations that are used in ASP.NET projects with executable and class library projects. It is inspired by Sayed Hashimi's SlowCheetah package but is designed to work with Mono's xbuild as well as .NET's MSBuild.</description>
   </metadata>
