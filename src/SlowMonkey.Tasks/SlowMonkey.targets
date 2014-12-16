@@ -33,12 +33,9 @@
           Inputs="@(AppConfigWithTargetPath);$(ConfigTransformFile)"
           Outputs="$(ConfigTransformOutput)"
   >
-    <!-- Copy to obj folder -->
-    <Copy SourceFiles="@(AppConfigWithTargetPath)" DestinationFiles="$(ConfigTransformOutput)" />
-    
     <!-- Transform -->
     <SlowMonkey.Tasks.TransformXml
-      Source="$(ConfigTransformOutput)"
+      Source="@(AppConfigWithTargetPath)"
       Destination="$(ConfigTransformOutput)"
       Transform="$(ConfigTransformFile)" />
   </Target>
